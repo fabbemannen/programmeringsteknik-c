@@ -3,299 +3,181 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace RecipeScraper
 {
-class Program
-{
-static void Main(string[] args)
-{
-// Klockan är 03:35, måste bara få detta att funka till imorgon.
-var lsit = new List<Recipe>();
-try
-{
-using (var b = new MemoryStream())
-{
+    internal class Program
+    {
+        private static List<Recipe> recipeList = new List<Recipe>();
+
+        private static readonly ConsoleColor originalColor = Console.ForegroundColor;
+        private const ConsoleColor titleColor = ConsoleColor.Blue;
+        private const ConsoleColor underTitleColor = ConsoleColor.Cyan;
+        private const ConsoleColor variationColor = ConsoleColor.DarkGray;
 
 
-try
-{
-var r = (HttpWebRequest)WebRequest.Create(@"https://www.koket.se/smorstekt-torskrygg-med-pestoslungad-blomkal-och-sparris");
-using (var rr = r.GetResponse())
-{
-var tmp = new Recipe();
-var htd = new HtmlDocument();
-// var cartConverter = ServiceLocator.Current.GetInstance<ICartConverter<ICart, OrderDto>>();
-// var cartRecords = cartConverter.Convert(cart);
-//
-// var valueProvider = ServiceLocator.Current.GetInstance<IMapper>();
 
-// var ociRecords = cartConverter.Convert(cart)
-// .Select(x => new OciRecord
-//{
-//FieldsWithValues = valueProvider.GetValues(x)
-//})
-//.ToList();
+        private static void Main(string[] args)
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("sv-SE");
 
-////do some mapping magic
+            //List of URLs to get recipes from
+            List<string> recipeUrls = new List<string>
+            {
+                "https://www.koket.se/smorstekt-torskrygg-med-pestoslungad-blomkal-och-sparris",
+                "https://www.koket.se/italiensk-kycklinggryta-med-vitt-vin",
+                "https://www.koket.se/smakrik-o-lrisotto-med-vitlo-ksrostad-tomat-citronsparris-och-het-chorizo",
+                "https://www.koket.se/smorbakad-spetskal-med-krispig-kyckling-och-graddskum"
+            };
 
-                            using (var c = rr.GetResponseStream())
-{
-using (var tmp2 = new MemoryStream())
-{
-c.CopyTo(tmp2);
-tmp2.Seek(0, SeekOrigin.Begin);
-htd.Load(tmp2);
-var d = JsonConvert.DeserializeObject<JObject>(htd.GetElementbyId("__NEXT_DATA__").InnerHtml)
-                                .SelectToken("props.pageProps.structuredData[?(@['\x40type']=='Recipe')]") as JObject;
-tmp.N = (string)d["name"].ToObject(typeof(string));
-tmp.D = (string)d["description"].ToObject(typeof(string));
-tmp.I = (string)d["image"].ToObject(typeof(string));
-                                    var y = new string(new[] { 't', 'e','s','t'});
-tmp.Ig = new List<Ingredient>();
-foreach (var tm3p in d["recipeIngredient"] as JArray)
-{
-if (double.TryParse(((string)tm3p).Split(' ')[0], out var a))
-{
-var n = ((string)tm3p).Split(' ').Skip(2);
-tmp.Ig.Add(new Ingredient { A = a, U = ((string)tm3p).Split(' ')[1], N = string.Join(" ", n) });
-}
-else
-{
-tmp.Ig.Add(new Ingredient { N = (string)tm3p });
-}
-}
-tmp.Step = new List<Step>();
-foreach (var t4mp in d["recipeInstructions"] as JArray)
-tmp.Step.Add(new Step { Tx = new Regex("<[^>]*(>|$)").Replace((string)t4mp["text"], string.Empty).Replace("\n", " ") });
-}
+            foreach (string url in recipeUrls)
+            {
+                LoadRecipe(url);
+            }
 
-lsit.Add(tmp);
-}
-}
-}
-catch(Exception ex)
-{
-Console.WriteLine($"ERROR: {ex.Message}");
-}
-                }
-//var ociRecords = cart.GetAllLineItems()
-//.Select(x => new OciRecord
-//{
-//FieldsWithValues = new List<FieldWithValue>
-//                {
-//new FieldWithValue
-//{
-//FieldDefinition = FieldDefinitions.All.FirstOrDefault(f => f.Name == "VENDORMAT"),
-//Value = x.Code
-//},
-//new FieldWithValue
-//{
-//FieldDefinition = FieldDefinitions.All.FirstOrDefault(f => f.Name == "QUANTITY"),
-//Value = x.Quantity.ToString("###########.###", CultureInfo.InvariantCulture)
-//},
-//new FieldWithValue
-//{
-//FieldDefinition = FieldDefinitions.All.FirstOrDefault(f => f.Name == "DESCRIPTION"),
-//Value = x.DisplayName
-//},
-//                }
-//})
-//.ToList();
-                try
+            Print(recipeList);
+        }
+
+        /// <summary>
+        /// Scrape a webpage from koket.se for recipes
+        /// </summary>
+        /// <param name="url">URL to page with recipe</param>
+        private static void LoadRecipe(string url)
+        {
+            try
+            {
+                HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(url);
+                using (WebResponse webResponse = webRequest.GetResponse())
                 {
-var r = (HttpWebRequest)WebRequest.Create(@"https://www.koket.se/vegoburgare-med-tryffelmajonnas");
-using (var rr = r.GetResponse())
-{
-var tmp = new Recipe();
-var htd = new HtmlDocument();
-using (var c = rr.GetResponseStream())
-{
-using (var tmp2 = new MemoryStream())
-{
-c.CopyTo(tmp2);
-tmp2.Seek(0, SeekOrigin.Begin);
-htd.Load(tmp2);
-var d = JsonConvert.DeserializeObject<JObject>(htd.GetElementbyId("__NEXT_DATA__").InnerHtml)
-                                .SelectToken("props.pageProps.structuredData[?(@['\x40type']=='Recipe')]") as JObject;
-tmp.N = (string)d["name"].ToObject(typeof(string));
-tmp.D = (string)d["description"].ToObject(typeof(string));
-tmp.I = (string)d["image"].ToObject(typeof(string));
-tmp.Ig = new List<Ingredient>();
-foreach (var tm3p in d["recipeIngredient"] as JArray)
-{
-if (double.TryParse(((string)tm3p).Split(' ')[0], out var a))
-{
-var n = ((string)tm3p).Split(' ').Skip(2);
-tmp.Ig.Add(new Ingredient { A = a, U = ((string)tm3p).Split(' ')[1], N = string.Join(" ", n) });
-}
-else
-{
-tmp.Ig.Add(new Ingredient { N = (string)tm3p });
-}
-}
-tmp.Step = new List<Step>();
-foreach (var t4mp in d["recipeInstructions"] as JArray)
-tmp.Step.Add(new Step { Tx = new Regex("<[^>]*(>|$)").Replace((string)t4mp["text"], string.Empty).Replace("\n", " ") });
-}
-lsit.Add(tmp);
-}
-}
-}
-catch (Exception ex)
-{
-Console.WriteLine($"ERROR: {ex.Message}");
-}
-try
-{
-var r = (HttpWebRequest)WebRequest.Create(@"https://www.koket.se/smakrik-o-lrisotto-med-vitlo-ksrostad-tomat-citronsparris-och-het-chorizo");
-using (var rr = r.GetResponse())
-{
-var tmp = new Recipe();
-var htd = new HtmlDocument();
-using (var c = rr.GetResponseStream())
-{
-using (var tmp2 = new MemoryStream())
-{
-c.CopyTo(tmp2);
-tmp2.Seek(0, SeekOrigin.Begin);
-htd.Load(tmp2);
-var d = JsonConvert.DeserializeObject<JObject>(htd.GetElementbyId("__NEXT_DATA__").InnerHtml)
-.SelectToken("props.pageProps.structuredData[?(@['\x40type']=='Recipe')]") as JObject;
-tmp.N = (string)d["name"].ToObject(typeof(string));
-tmp.D = (string)d["description"].ToObject(typeof(string));
-tmp.I = (string)d["image"].ToObject(typeof(string));
-tmp.Ig = new List<Ingredient>();
-foreach (var tm3p in d["recipeIngredient"] as JArray)
-{
-if (double.TryParse(((string)tm3p).Split(' ')[0], out var a))
-{
-var n = ((string)tm3p).Split(' ').Skip(2);
-tmp.Ig.Add(new Ingredient { A = a, U = ((string)tm3p).Split(' ')[1], N = string.Join(" ", n) });
-}
-else
-{
-tmp.Ig.Add(new Ingredient { N = (string)tm3p });
-}
-}
-tmp.Step = new List<Step>();
-foreach (var t4mp in d["recipeInstructions"] as JArray)
-tmp.Step.Add(new Step { Tx = new Regex("<[^>]*(>|$)").Replace((string)t4mp["text"], string.Empty).Replace("\n", " ") });
-}
+                    Recipe recipe = new Recipe();
+                    HtmlDocument htmlDocument = new HtmlDocument();
 
-lsit.Add(tmp);
-}
-}
-}
-catch (Exception ex)
-{
-Console.WriteLine($"ERROR: {ex.Message}");
-}
-try
-{
-var r = (HttpWebRequest)WebRequest.Create(@"https://www.koket.se/smorbakad-spetskal-med-krispig-kyckling-och-graddskum");
-using (var rr = r.GetResponse())
-{
-var tmp = new Recipe();
-var htd = new HtmlDocument();
-using (var c = rr.GetResponseStream())
-{
-using (var tmp2 = new MemoryStream())
-{
-c.CopyTo(tmp2);
-tmp2.Seek(0, SeekOrigin.Begin);
-htd.Load(tmp2);
-var d = JsonConvert.DeserializeObject<JObject>(htd.GetElementbyId("__NEXT_DATA__").InnerHtml)
-.SelectToken("props.pageProps.structuredData[?(@['\x40type']=='Recipe')]") as JObject;
-tmp.N = (string)d["name"].ToObject(typeof(string));
-tmp.D = (string)d["description"].ToObject(typeof(string));
-tmp.I = (string)d["image"].ToObject(typeof(string));
-tmp.Ig = new List<Ingredient>();
-foreach (var tm3p in d["recipeIngredient"] as JArray)
-{
-if (double.TryParse(((string)tm3p).Split(' ')[0], out var a))
-{
-var n = ((string)tm3p).Split(' ').Skip(2);
-tmp.Ig.Add(new Ingredient { A = a, U = ((string)tm3p).Split(' ')[1], N = string.Join(" ", n) });
-}
-else
-{
-tmp.Ig.Add(new Ingredient { N = (string)tm3p });
-}
-}
-tmp.Step = new List<Step>();
-foreach (var t4mp in d["recipeInstructions"] as JArray)
-tmp.Step.Add(new Step { Tx = new Regex("<[^>]*(>|$)").Replace((string)t4mp["text"], string.Empty).Replace("\n", " ") });
-}
+                    using (Stream content = webResponse.GetResponseStream())
+                    {
+                        using (MemoryStream buffer = new MemoryStream())
+                        {
 
-lsit.Add(tmp);
-}
-}
-}
-catch (Exception ex)
-{
-Console.WriteLine($"ERROR: {ex.Message}");
-}
-}
-catch (Exception ex)
-{
-Console.WriteLine($"ERROR: {ex.Message}");
-}
-try
-{
-for (var x = 0; x < lsit.Count; x++)
-{
-Console.WriteLine(@$"Recept:" + " " + lsit[x].N);
-Console.WriteLine("-------");
-Console.WriteLine(lsit[x].D.Trim());
-Console.WriteLine("-------");
-Console.WriteLine("Ingredienser:");
-for (var y = 0; y < lsit[x].Ig.Count; y++)
-{
-if (lsit[x].Ig[y].A == 0)
-Console.WriteLine(lsit[x].Ig[y].N);
-else
-Console.WriteLine(lsit[x].Ig[y].A.ToString() + " " + lsit[x].Ig[y].U + " " + lsit[x].Ig[y].N);
-}
-Console.WriteLine("-------");
-Console.WriteLine("Steg:");
-for (var z = 0; z < lsit[x].Step.Count; z++)
-{
-Console.WriteLine((z + 1).ToString() + ": " + lsit[x].Step[z].Tx);
-}
-Console.WriteLine();
-}
-}
-catch (Exception ex)
-{
-Console.WriteLine($"ERROR: {ex.Message}");
-}
-}
-}
+                            content.CopyTo(buffer);
+                            buffer.Seek(0, SeekOrigin.Begin);
+                            htmlDocument.Load(buffer);
+                            buffer.Seek(0, SeekOrigin.Begin);
+                            htmlDocument.Load(buffer);
+                            JObject data = JsonConvert.DeserializeObject<JObject>(htmlDocument.GetElementbyId("__NEXT_DATA__").InnerHtml)
+                                                            .SelectToken("props.pageProps.structuredData[?(@['\x40type']=='Recipe')]") as JObject;
 
-class Recipe
-{
-public string N { get; set; }
-public string I { get; set; }
-public string D { get; set; }
-public List<Ingredient> Ig { get; set; }
-public List<Step> Step { get; set; }
-}
+                            recipe.Name = data["name"].ToObject<string>();
 
-class Ingredient
-{
-public double A { get; set; }
-public string U { get; set; }
-public string N { get; set; }
-}
+                            recipe.Description = data["description"].ToObject<string>();
+                            recipe.ImageUrl = data["image"].ToObject<string>();
+                            recipe.Ingredients = new List<Ingredient>();
+                            foreach (JToken ingredient in data["recipeIngredient"] as JArray)
+                            {
+                                if (double.TryParse(((string)ingredient).Split(' ')[0], out double value))
+                                {
+                                    IEnumerable<string> name = ((string)ingredient).Split(' ').Skip(2);
 
-class Step
-{
-public string T1 { get; set; }
-public string Tx { get; set; }
-}
+                                    recipe.Ingredients.Add(new Ingredient
+                                    {
+                                        Value = value,
+                                        Unit = ((string)ingredient).Split(' ')[1],
+                                        Name = string.Join(" ", name)
+                                    });
+                                }
+                                else
+                                {
+                                    recipe.Ingredients.Add(new Ingredient { Name = (string)ingredient });
+                                }
+                            }
+                            recipe.Instructions = new List<string>();
+                            foreach (JToken instruction in data["recipeInstructions"] as JArray)
+                            {
+                                recipe.Instructions.Add(new Regex("<[^>]*(>|$)").Replace((string)instruction["text"], string.Empty).Replace("\n", " "));
+                            }
+
+                            recipeList.Add(recipe);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Print all entries in a list of recipes to the console
+        /// </summary>
+        /// <param name="recipeList">List of recipes</param>
+        private static void Print(List<Recipe> recipeList)
+        {
+            foreach(var recipe in recipeList)
+            {
+
+                Console.ForegroundColor = titleColor;
+                Console.WriteLine(@$"Recept:" + " " + recipe.Name.ToUpper());
+                Console.ForegroundColor = originalColor;
+
+                Console.WriteLine("-------");
+                
+                Console.WriteLine(recipe.Description.Trim());
+                
+                Console.WriteLine("-------");
+                
+                Console.ForegroundColor = underTitleColor;
+                Console.WriteLine("Ingredienser:");
+                Console.ForegroundColor = originalColor;
+
+                int count = 0;
+                foreach (var ingredient in recipe.Ingredients)
+                {
+                    Console.ForegroundColor = count % 2 == 0 ? originalColor : variationColor;
+
+                    if (ingredient.Value == 0)
+                    {
+                        Console.WriteLine(ingredient.Name);
+                    }
+                    else
+                    {
+                        Console.WriteLine(ingredient.Value.ToString() + " " + ingredient.Unit + " " + ingredient.Name);
+                    }
+                    count++;
+                }
+                Console.ForegroundColor = originalColor;
+                Console.WriteLine("-------");
+                Console.ForegroundColor = underTitleColor;
+                Console.WriteLine("Steg:");
+                Console.ForegroundColor = originalColor;
+                for (int i = 0; i < recipe.Instructions.Count; i++)
+                {
+                    Console.ForegroundColor = i % 2 == 0 ? originalColor : variationColor;
+                    Console.WriteLine((i + 1).ToString() + ": " + recipe.Instructions[i]);
+                }
+                Console.ForegroundColor = originalColor;
+                Console.WriteLine();
+            }
+        }
+    }
+
+    internal class Recipe
+    {
+        public string Name { get; set; }
+        public string ImageUrl { get; set; }
+        public string Description { get; set; }
+        public List<Ingredient> Ingredients { get; set; }
+        public List<string> Instructions { get; set; }
+    }
+
+    internal class Ingredient
+    {
+        public double Value { get; set; }
+        public string Unit { get; set; }
+        public string Name { get; set; }
+    }
 }
